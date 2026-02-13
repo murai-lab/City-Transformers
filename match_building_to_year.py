@@ -248,7 +248,7 @@ def main():
     args = parser.parse_args()
 
     # Load data
-    city_data = load_and_preprocess_city_data('worcester_crawler/worcester_city_data.csv')
+    city_data = load_and_preprocess_city_data('data/worcester_city_data.csv')
     buildings_gdf = load_building_footprints('Buildings_with_addr.geojson')
 
     # Load city boundary and filter footprints to those within the city polygon
