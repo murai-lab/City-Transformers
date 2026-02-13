@@ -1,139 +1,53 @@
 # City-Transformers
+Repository for Nature Cities paper.
 
-City-Transformers is a framework for estimating **building construction age** from **street-view imagery (SVI)** by classifying building facades into four construction-epoch bins:
+- `data/`
+  - `City_Boundary.geojson`
+    - Description: polygon representing city boundaries for Worcester, MA
+  - `Buildings_with_addr.geojson`
+    - Description: list of 44,059 (OBJECTIDs, TYPE, ..., address, geometry)
+    - Note: Filtered from `Buildings.geojson` to inlcude only TYPE==BLDG and non-null address
+  - `Buildings_with_age.geojson`
+    - Description: list of 44,059 (OBJECTIDs, TYPE, ..., address, geometry, age_category)
+    - Note: derived from `Buildings_with_addr.geojson` using `match_building_to_year.py` 
+  - `collect_via_gsv_complete.csv`
+    - Description: 4,085 buildings from `Buildings.geojson` with TYPE = 'BLDG' that could not be matched to a PID, MBL or address of a property with known built year. When disregarding unit numbers, it contains 4,072 unique addresses.
+  - `collect_decisions_final.jsonl`
+    - Description: JSONL file listing buildings patch filenames in the format {OBJECTID.jpg} and corresponding predictions (class in 1--4).
+  - `worcester_building_age_map.pdf`
+    - Description: Map generated using `map_maker.py`
 
-* **Class 1:** pre-1940
-* **Class 2:** 1941–1970
-* **Class 3:** 1971–1990
-* **Class 4:** post-1990
+- (NOT AVAILABLE DUE TO Google Street View API RESTRICTIONS) `gsv_scraped_images/`
+  - Folder Structure: `{objectid}/`
+                      `{objectid}/crops/house/{objectid}[2-9].jpg`
+                      `{objectid}/labels/{objectid}.jpg`
+                      `final_target_set/{objectid}.jpg`
+  - Description: 3,271 images collected from Google Street View using 4,072 unique addresses in `data/collect_via_gsv_complete.csv`.
 
-The repository implements two deep learning approaches:
+- `models/`
+  - Folder Structure: `cswin/`
+                      `simclr/`
+  - Description: each subfolder contains the code related to the Deep Learning models in the paper.
 
-* **CSWin-Transformer** – a hierarchical vision transformer with cross-shaped window attention
-* **SimCLR (ResNet-50 backbone)** – a contrastive learning framework fine-tuned for classification
+- `worcester_gov_site_data_scraper/`
+  - `main.py`
+    - Description: Collects property records from the Worcester City Government website by attempting PIDs sequentially and save results as a CSV file.
+  - `download_images.py`
+    - Description: Downloads images using URLs listed in the CSV file collected using the `main.py` script in this folder.
 
-Pretrained weights for both models are included.
+- `bounding_box_crop.ipynb`
+  - Description: uses trained YOLOv8s model to extract key patches from building images.
 
-The repository also contains a **Google Street View (GSV) scraping notebook** used to build:
+- `gsv_scraper.ipynb`
+  - Description: Scrapes images from Google Street View by address.
 
-* an **out-of-distribution (OOD)** test set, and
-* a **target set** for properties missing imagery in the city’s database.
+- `map_maker.py`
+  - Decription: Generates a full city-wide age mapping based on a GEOJSON file containing footprints and age data.
 
-Human evaluation data can be made available **upon reasonable request**.
+- `match_building_to_year.py`
+  - Description: Joins building footprints with city data using multiple matching strategies. It has two main purposes:
+    1) Get a list of buildings whose images must be retrieves using a street-view API from their addresses.
+    2) Join existing building age data and building age predictions with footprint data.
 
----
-
-## 📂 Data
-
-### **Training / Validation Data**
-
-Training data comes from the Worcester city open-data housing facade dataset, hosted on Hugging Face:
-
-👉 **[https://huggingface.co/datasets/murai-lab/WorcesterMA_Housing_Facades](https://huggingface.co/datasets/murai-lab/WorcesterMA_Housing_Facades)**
-
-This dataset includes:
-
-* 22,949 labeled facade images
-* Labels mapped to the 4 construction-era classes above
-
-### **Out-of-Distribution (OOD) Test Data**
-
-OOD data must be collected **via Google Street View**, using:
-
-```
-worcester-web-scraper/gsv_scraper.ipynb
-```
-
-You will need:
-
-* a Google Street View API key
-* to comply with Google's Terms of Service
-
-This notebook also builds the **target set** for properties with no images in the city dataset.
-
-### **Pretrained Weights**
-
-Pretrained weights for CSWin and SimCLR models are available in:
-
-```
-models/
-```
-
----
-
-## ⚙️ Installation
-
-```bash
-git clone https://github.com/murai-lab/City-Transformers.git
-cd City-Transformers
-```
-
-Ensure you have:
-
-* Python 3.8+
-* PyTorch (with CUDA if running on GPU)
-
----
-
-## 🚀 Training
-
-### ** Prepare the Data**
-
-Download and extract the Hugging Face dataset.
-Training scripts expect the following structure:
-
-```
-abap/
-    train/
-    val/
-    metadata.csv
-```
-
-Set the MVIT_PATH environment variable to your path:
-
-```
-export MVIT_PATH=/path/to/data/abap/ 
-```
-
-## 🌐 Scraping Google Street View (GSV)
-
-The notebook:
-
-```
-worcester-web-scraper/gsv_scraper.ipynb
-```
-
-allows you to:
-
-* Provide a list of property IDs or addresses
-* Fetch corresponding GSV images
-* Save them locally for evaluation or target-set creation
-
-⚠️ **Important:**
-You must use your own GSV API key and adhere to Google Street View **Terms of Service**.
-
-The training scripts will automatically replace `abap` by `gsv` in the MVIT_PATH variable. Hence, the GSV Dataset folder (`gsv`) must be located on the same directory as the City Housing Dataset (`abap`) folder.
-
----
-
-## 📑 Citation
-
-If you use this repository, please cite:
-
-### **Dataset**
-
-```
-@misc{murai2025worcester_dataset,
-  author       = {Shannon Song and Yiqing Zhang and Fabricio Murai and Nan Ma},
-  title        = {WorcesterMA_Housing_Facades Dataset},
-  year         = {2025},
-  howpublished = {\url{https://huggingface.co/datasets/murai-lab/WorcesterMA_Housing_Facades}}
-}
-```
-
----
-
-## 📜 License
-
-This project is released under the **MIT License**.
-See the `LICENSE` file for details.
+- `plot_confusion_matrix.py`
+  - Description: Plots confusion matrices based on the results of the human evaluation.
